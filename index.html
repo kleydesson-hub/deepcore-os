@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepCore OS - Portfólio & Monitoramento</title>
+    <!-- Importando biblioteca MQTT -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
+    
+    <style>
+        :root {
+            --bg-principal: #0d1117;
+            --bg-card: #161b22;
+            --bg-subcard: #21262d;
+            --texto: #c9d1d9;
+            --azul-dev: #58a6ff;
+            --verde-sucesso: #238636;
+            --borda: #30363d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-principal);
+            color: var(--texto);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            width: 100%;
+            max-width: 900px;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            color: var(--azul-dev);
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: #8b949e;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        .main-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            width: 90%;
+            max-width: 900px;
+            padding-bottom: 60px;
+        }
+
+        /* Container do Monitor em Tempo Real (Mantendo a lógica anterior) */
+        .monitor-section {
+            background: var(--bg-card);
+            border: 1px solid var(--borda);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .status-container {
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        .status-dot {
+            height: 10px;
+            width: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .online { background-color: var(--verde-sucesso); box-shadow: 0 0 10px var(--verde-sucesso); }
+        .offline { background-color: #da3633; }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .data-grid { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: var(--bg-subcard);
+            padding: 25px;
+            border-radius: 8px;
+            border: 1px solid var(--borda);
+        }
+
+        .value { font-size: 3rem; font-weight: bold; display: block; margin: 10px 0; color: var(--azul-dev); }
+        .unit { font-size: 1rem; color: #8b949e; }
+        
+        #rele-status { transition: 0.3s; font-size: 1.5rem; font-weight: bold;}
+        .rele-on { color: #3fb950; text-shadow: 0 0 10px rgba(63,185,80,0.3); }
+        .rele-off { color: #8b949e; }
+        .rele-icon { font-size: 2rem; display: block; margin-top: 10px; }
+
+        /* Novas Seções do Portfólio */
+        .portfolio-section {
+            background: var(--bg-card);
+            border: 1px solid var(--borda);
+            border-radius: 12px;
+            padding: 30px;
+        }
+
+        .portfolio-section h2 {
+            color: var(--azul-dev);
+            border-bottom: 1px solid var(--borda);
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+
+        .tech-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .tag {
+            background: var(--bg-subcard);
+            border: 1px solid var(--borda);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--azul-dev);
+        }
+
+        .about-dev {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .links-dev a {
+            color: var(--azul-dev);
+            text-decoration: none;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+
+        .links-dev a:hover { text-decoration: underline; }
+
+        footer {
+            width: 100%;
+            text-align: center;
+            padding: 20px;
+            font-size: 0.8rem;
+            color: #484f58;
+            border-top: 1px solid var(--borda);
+            background: var(--bg-card);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🛰️ DeepCore OS</h1>
+        <p>Solução Inteligente de Monitoramento e Resfriamento Automatizado para Data Centers</p>
+    </header>
+
+    <div class="main-layout">
+        
+        <!-- TELEMETRIA EM TEMPO REAL (MANTIDA INTEGRALMENTE) -->
+        <section class="monitor-section">
+            <div class="status-container">
+                <span id="dot" class="status-dot offline"></span> 
+                Status do Sistema: <span id="status-text">Conectando...</span>
+            </div>
+
+            <div class="data-grid">
+                <div class="card">
+                    <h3>Temperatura do Processador</h3>
+                    <span class="value" id="temp-val">--</span>
+                    <span class="unit">Graus Celsius (°C)</span>
+                </div>
+                <div class="card">
+                    <h3>Sistema de Arrefecimento</h3>
+                    <span class="value rele-off" id="rele-status">AGUARDANDO</span>
+                    <span class="rele-icon" id="rele-icon">❄️</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- SOBRE O PROJETO -->
+        <section class="portfolio-section">
+            <h2>Sobre o Projeto</h2>
+            <p>O <strong>DeepCore OS</strong> é um sistema integrado de IoT projetado para otimizar o consumo energético e manter o controle térmico estável em servidores de processamento intensivo. Utilizando lógica embarcada de automação, o hardware ativa o resfriamento ativo dinamicamente ao atingir limites críticos de temperatura, enviando métricas em tempo real via telemetria para a nuvem.</p>
+            
+            <h3>Tecnologias Utilizadas</h3>
+            <div class="tech-tags">
+                <span class="tag">ESP32 (Microcontrolador)</span>
+                <span class="tag">DS18B20 (Sensor de Precisão)</span>
+                <span class="tag">Protocolo MQTT</span>
+                <span class="tag">WebSockets Seguros (WSS)</span>
+                <span class="tag">HTML5 / CSS3 / JavaScript</span>
+                <span class="tag">HiveMQ Broker</span>
+            </div>
+        </section>
+
+        <!-- SOBRE O DESENVOLVEDOR -->
+        <section class="portfolio-section">
+            <h2>Desenvolvedor</h2>
+            <div class="about-dev">
+                <div>
+                    <h3 style="margin: 0; color: #fff;">Kleydesson</h3>
+                    <p style="margin: 5px 0 15px 0; color: #8b949e;">Estudante de Análise e Desenvolvimento de Sistemas (ADS)</p>
+                    <p>Desenvolvedor focado na integração entre software de alta performance e sistemas embarcados (Hardware/IoT), unindo automação mecânica física com plataformas Cloud modernas.</p>
+                    <div class="links-dev">
+                        <a href="https://github.com/SEU_USUARIO" target="_blank">🔗 GitHub</a>
+                        <a href="#" target="_blank">🔗 LinkedIn</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <footer>
+        DeepCore OS v1.0 • Desenvolvido como projeto prático de engenharia de software e IoT.
+    </footer>
+
+    <!-- LÓGICA JAVASCRIPT / MQTT (MANTIDA IGUAL PARA NÃO AFETAR O COMDADO) -->
+    <script>
+    // Configuração explícita para evitar qualquer bloqueio do GitHub Pages
+    const broker = "broker.emqx.io";
+    const port = 8084; 
+    const clientId = "DeepCore_Web_" + Math.random().toString(16).substr(2, 8);
+
+    // Forçando o Paho a entender os parâmetros de forma separada e segura
+    const client = new Paho.MQTT.Client(broker, Number(port), "/mqtt", clientId);
+
+    client.onConnectionLost = (resp) => {
+        document.getElementById("dot").className = "status-dot offline";
+        document.getElementById("status-text").innerText = "Desconectado. Tentando reconectar...";
+        console.log("Conexão perdida:", resp.errorMessage);
+    };
+
+    client.onMessageArrived = (msg) => {
+        console.log("Dado recebido da bancada:", msg.destinationName, "->", msg.payloadString);
+        if (msg.destinationName === "deepcore/status/temp") {
+            document.getElementById("temp-val").innerText = msg.payloadString;
+        }
+        if (msg.destinationName === "deepcore/status/rele") {
+            const status = msg.payloadString;
+            const el = document.getElementById("rele-status");
+            const icon = document.getElementById("rele-icon");
+            el.innerText = status;
+            
+            if (status === "LIGADO") {
+                el.className = "value rele-on";
+                icon.innerText = "🌀"; 
+            } else {
+                el.className = "value rele-off";
+                icon.innerText = "❄️"; 
+            }
+        }
+    };
+
+    // Parâmetros de conexão que resolvem o problema de segurança do navegador
+    const conexaoOpcoes = {
+        timeout: 5,
+        keepAliveInterval: 60,
+        useSSL: true,                 // Obrigatório para o GitHub Pages (HTTPS)
+        mqttVersion: 4,               // Força a versão padrão estável do MQTT
+        onSuccess: () => {
+            document.getElementById("dot").className = "status-dot online";
+            document.getElementById("status-text").innerText = "Online (Servidor EMQX)";
+            client.subscribe("deepcore/status/temp");
+            client.subscribe("deepcore/status/rele");
+            console.log("MQTT conectado com sucesso!");
+        },
+        onFailure: (err) => {
+            document.getElementById("dot").className = "status-dot offline";
+            document.getElementById("status-text").innerText = "Erro de Conexão: " + err.errorMessage;
+            console.log("Erro detalhado do Broker:", err);
+        }
+    };
+
+    // Executa a conexão
+    client.connect(conexaoOpcoes);
+</script>
